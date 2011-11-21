@@ -158,16 +158,25 @@ let level_test =
 ;;
 
 (*
- * These really should be a map or something
+ * Key binding hash table
+ * Maps integer values of keys to key_binding
  *)
-let key_bindings = [{key = Key(Char.code 'q'); event = Quit};
-                {key = Key(Char.code 'w'); event = Quit};
-                {key = Key(Char.code 'u'); event = Undo};
-                {key = Key(Curses.Key.left); event = Direction(Left)};
-                {key = Key(Curses.Key.down); event = Direction(Down)};
-                {key = Key(Curses.Key.right); event = Direction(Right)};
-                {key = Key(Curses.Key.up); event = Direction(Up)};
-];;
+let key_bindings = Hashtbl.create 10;;
+
+(*
+ * Helper function for binding keys
+ *)
+let bind_key key' event' =
+        Hashtbl.add key_bindings key' ({key = Key(key'); event = event'})
+;;
+
+bind_key (Char.code 'q') Quit;;
+bind_key (Char.code 'w') Quit;;
+bind_key (Char.code 'u') Undo;;
+bind_key Curses.Key.left (Direction(Left));;
+bind_key Curses.Key.down (Direction(Down));;
+bind_key Curses.Key.right (Direction(Right));;
+bind_key Curses.Key.up (Direction(Up));;
 
 (*
  * Return the event associated with a particular key pressed
@@ -177,7 +186,7 @@ let get_key () =
         let k = Curses.wgetch (Curses.stdscr ()) in
 
         try
-                (List.find (fun k' -> k'.key = Key(k)) key_bindings).event
+                (Hashtbl.find key_bindings k).event
         with
         | Not_found -> Continue
 ;;
