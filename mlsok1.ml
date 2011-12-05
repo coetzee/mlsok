@@ -126,9 +126,7 @@ let print_level l win moves pushes =
         print (Curses.waddstr win) ("Moves: " ^ (string_of_int moves) ^ " Pushes: " ^ (string_of_int pushes) ^ "\n");
 
         (* Print boxes *)
-        List.iter (fun i ->
-                let Pos(x, y) = i in
-
+        List.iter (fun (Pos(x, y)) ->
                 match l.layout.(y).(x) with
                 | Goal -> print (Curses.mvwaddch win y x) (int_of_char '*')
                 | Floor -> print (Curses.mvwaddch win y x) (int_of_char '$')
@@ -218,7 +216,7 @@ let move_box boxes x y xdir ydir =
  * Return: boolean
  *)
 let box_exists boxes x y =
-        List.exists (fun box -> let Pos(boxx, boxy) = box in boxx = x && boxy = y) boxes
+        List.exists (fun (Pos(boxx, boxy)) -> boxx = x && boxy = y) boxes
 ;;
 
 (*
@@ -228,11 +226,7 @@ let box_exists boxes x y =
  * Return: boolean
  *)
 let is_level_won boxes layout =
-        List.for_all (fun box ->
-                        let Pos(x, y) = box in
-
-                        layout.(y).(x) = Goal
-                ) boxes
+        List.for_all (fun (Pos(x, y)) -> layout.(y).(x) = Goal) boxes
 ;;
 
 (*
