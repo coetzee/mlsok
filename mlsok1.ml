@@ -26,6 +26,7 @@ type event =
         | Quit
         | Continue
         | Undo
+        | Redo
 ;;
 
 type state = {
@@ -171,6 +172,7 @@ let bind_key key' event' =
 bind_key (Char.code 'q') Quit;;
 bind_key (Char.code 'w') Quit;;
 bind_key (Char.code 'u') Undo;;
+bind_key (Char.code 'r') Redo;;
 bind_key Curses.Key.left (Direction(Left));;
 bind_key Curses.Key.down (Direction(Down));;
 bind_key Curses.Key.right (Direction(Right));;
@@ -301,18 +303,60 @@ let level_complete win =
 ;;
 
 (*
+ * Zipper for undo, redo system
+ *)
+type 'a list_zipper = ('a list) * ('a list);;
+
+(*
+ * Get the current focus in the zipper
+ *)
+let current_focus zipper =
+        match zipper with
+        | (_, head2 :: _) -> head2
+        | (head1 :: _, []) -> head1
+        | ([], []) -> raise Impossible_state
+;;
+
+(*
+ * Add a new state to the zipper
+ *)
+let new_focus focus zipper =
+        match zipper with
+        | (unzipped, head2 :: _) -> (head2 :: unzipped, [focus])
+        | (_, []) -> raise Impossible_state
+;;
+
+(*
+ * Unzips a zipper one place
+ *)
+let unzip zipper =
+        match zipper with
+        | (head1 :: tail1, zipped) -> (tail1, head1 :: zipped)
+        | ([], _) -> zipper
+;;
+
+(*
+ * Zips a zipper one place
+ *)
+let zip zipper =
+        match zipper with
+        | (unzipped, head1 :: zipped) -> (head1 :: unzipped, zipped)
+        | (_, []) -> zipper
+;;
+
+(*
  * Main program loop
  * states': list state, first state
  * win: window
  *)
-let run states' win =
+let run (states': state list_zipper) win =
         (*
          * Get input from user and act on event
          * states: list state, all game states up to that point
          *)
         let rec get_input states =
                 try
-                        let s   = List.hd states in
+                        let s   = current_focus states in
                         let lev = s.level_state in
 
                         print_level lev win s.moves s.pushes;
@@ -326,12 +370,8 @@ let run states' win =
                                 | Direction(Up) -> next_state (move_up lev) states
                                 | Direction(Right) -> next_state (move_right lev) states
                                 | Quit -> ()
-                                | Undo -> (
-                                                try
-                                                        get_input (List.tl states)
-                                                with
-                                                | _ -> get_input states
-                                )
+                                | Undo -> get_input (unzip states)
+                                | Redo -> get_input (zip states)
                                 | Continue -> get_input states
                         )
                 with
@@ -342,17 +382,17 @@ let run states' win =
          * states: all states generated so far
          *)
         and next_state f states =
-                let s = List.hd states in
+                let s = current_focus states in
 
                 match f with
-                | Push(l1) -> get_input ({level_state = l1;
+                | Push(l1) -> get_input (new_focus ({level_state = l1;
                                           moves = s.moves + 1;
                                           pushes = s.pushes + 1;
-                                         } :: states)
-                | Move(l1) -> get_input ({level_state = l1;
+                                         }) states)
+                | Move(l1) -> get_input (new_focus ({level_state = l1;
                                           moves = s.moves + 1;
                                           pushes = s.pushes;
-                                         } :: states)
+                                         }) states)
                 | No_move -> get_input states
         in
         ignore (Curses.refresh ());
@@ -418,7 +458,7 @@ let () =
         try
                 let win = init_cursors () in
 
-                run [init_state] win;
+                run ([], [init_state]) win;
 
                 init_func (Curses.delwin win);
                 Curses.endwin ();
