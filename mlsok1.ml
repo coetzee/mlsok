@@ -355,27 +355,18 @@ let run (states': state list_zipper) win =
          * states: list state, all game states up to that point
          *)
         let rec get_input states =
-                try
-                        let s   = current_focus states in
-                        let lev = s.level_state in
+                let s   = current_focus states in
+                let lev = s.level_state in
 
-                        print_level lev win s.moves s.pushes;
-
-                        if is_level_won lev.boxes lev.layout then
-                                level_complete win
-                        else (
-                                match get_key () with
-                                | Direction(Left) -> next_state (move_left lev) states
-                                | Direction(Down) -> next_state (move_down lev) states
-                                | Direction(Up) -> next_state (move_up lev) states
-                                | Direction(Right) -> next_state (move_right lev) states
-                                | Quit -> ()
-                                | Undo -> get_input (unzip states)
-                                | Redo -> get_input (zip states)
-                                | Continue -> get_input states
-                        )
-                with
-                | Invalid_argument _ -> get_input states
+                match get_key () with
+                | Direction(Left) -> next_state (move_left lev) states
+                | Direction(Down) -> next_state (move_down lev) states
+                | Direction(Up) -> next_state (move_up lev) states
+                | Direction(Right) -> next_state (move_right lev) states
+                | Quit -> ()
+                | Undo -> display (unzip states)
+                | Redo -> display (zip states)
+                | Continue -> get_input states
         (*
          * Generate the next game state
          * f: function that returns new state
@@ -385,18 +376,31 @@ let run (states': state list_zipper) win =
                 let s = current_focus states in
 
                 match f with
-                | Push(l1) -> get_input (new_focus ({level_state = l1;
+                | Push(l1) -> display (new_focus ({level_state = l1;
                                           moves = s.moves + 1;
                                           pushes = s.pushes + 1;
                                          }) states)
-                | Move(l1) -> get_input (new_focus ({level_state = l1;
+                | Move(l1) -> display (new_focus ({level_state = l1;
                                           moves = s.moves + 1;
                                           pushes = s.pushes;
                                          }) states)
-                | No_move -> get_input states
+                | No_move -> display states
+        (*
+         * Display the current state
+         *)
+        and display states =
+                let s   = current_focus states in
+                let lev = s.level_state in
+
+                print_level lev win s.moves s.pushes;
+
+                if is_level_won lev.boxes lev.layout then
+                        level_complete win
+                else
+                        get_input states
         in
         ignore (Curses.refresh ());
-        get_input states'
+        display states'
 ;;
 
 (*
