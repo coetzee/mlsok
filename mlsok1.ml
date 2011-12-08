@@ -470,5 +470,5 @@ let () =
         with
         | Print_error -> Curses.endwin (); Printf.printf "Print_error\n"
         | Init_error -> Printf.printf "Init_error\n"
-
+        | e -> Curses.endwin(); Printf.eprintf "Unexpected exception : %s\n" (Printexc.to_string e)
 ;;
