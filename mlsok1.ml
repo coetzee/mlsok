@@ -320,7 +320,7 @@ let current_focus zipper =
 (*
  * Add a new state to the zipper
  *)
-let new_focus focus zipper =
+let new_focus zipper focus =
         match zipper with
         | (unzipped, head2 :: _) -> (head2 :: unzipped, [focus])
         | (_, []) -> raise Impossible_state
@@ -373,18 +373,22 @@ let run (states': state list_zipper) win =
          * states: all states generated so far
          *)
         and next_state f states =
-                let s = current_focus states in
+                let (-->) g x = x g in
+                let new_focus' = new_focus states in
 
-                match f with
-                | Push(l1) -> display (new_focus ({level_state = l1;
-                                          moves = s.moves + 1;
-                                          pushes = s.pushes + 1;
-                                         }) states)
-                | Move(l1) -> display (new_focus ({level_state = l1;
-                                          moves = s.moves + 1;
-                                          pushes = s.pushes;
-                                         }) states)
-                | No_move -> display states
+                let update_moves s' = {s' with moves = s'.moves + 1} in
+                let update_pushes s' = {s' with pushes = s'.pushes + 1} in
+                let update_level l1 s' = {s' with level_state = l1} in
+
+                let gen () =
+                        let s = current_focus states in
+
+                        match f with
+                        | Push(l1) -> new_focus' (update_level l1 s --> update_pushes --> update_moves)
+                        | Move(l1) -> new_focus' (update_level l1 s --> update_moves)
+                        | No_move -> states
+                in
+                gen () --> display
         (*
          * Display the current state
          *)
